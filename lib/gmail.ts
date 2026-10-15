@@ -1,7 +1,8 @@
+import {createHash} from 'node:crypto';
 import {cookies} from 'next/headers';
 import {EncryptJWT,jwtDecrypt} from 'jose';
 export type Account={email:string;access:string;refresh?:string;expiry:number};
-const key=()=>{const s=process.env.SESSION_SECRET;if(!s||s.length<32)throw Error('SESSION_SECRET nincs beállítva (minimum 32 karakter).');return new TextEncoder().encode(s)};
+const key=()=>{const s=process.env.SESSION_SECRET;if(!s||s.length<32)throw Error('SESSION_SECRET nincs beállítva (minimum 32 karakter).');return createHash('sha256').update(s).digest()};
 export async function session():Promise<Account[]>{const c=(await cookies()).get('mc_session')?.value;if(!c)return [];try{const {payload}=await jwtDecrypt(c,key());return Array.isArray(payload.accounts)?payload.accounts as Account[]:[]}catch{return []}}
 export async function save(accounts:Account[]){const encrypted=await new EncryptJWT({accounts}).setProtectedHeader({alg:'dir',enc:'A256GCM'}).setIssuedAt().setExpirationTime('30d').encrypt(key());(await cookies()).set('mc_session',encrypted,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:2592000})}
 export async function active(email:string){const accounts=await session();const a=accounts.find(x=>x.email===email);if(!a)throw Error('Ez a fiók nincs csatlakoztatva.');if(a.expiry>Date.now()+60000)return a;if(!a.refresh)throw Error('Csatlakoztasd újra a fiókot.');const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({client_id:process.env.GOOGLE_CLIENT_ID||'',client_secret:process.env.GOOGLE_CLIENT_SECRET||'',refresh_token:a.refresh,grant_type:'refresh_token'}),cache:'no-store'});if(!r.ok)throw Error('Lejárt a Google-kapcsolat. Jelentkezz be újra.');const t=await r.json();const next={...a,access:t.access_token as string,expiry:Date.now()+t.expires_in*1000};await save(accounts.map(x=>x.email===email?next:x));return next}
