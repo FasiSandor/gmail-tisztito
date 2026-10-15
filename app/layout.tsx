@@ -1,0 +1,1 @@
+import type {Metadata} from 'next';import './globals.css';export const metadata:Metadata={title:'Mail Cleaner – Gmail-tisztító',description:'Gmail levelek biztonságos tisztítása több fiókból'};export default function Layout({children}:{children:React.ReactNode}){return <html lang='hu'><body>{children}</body></html>;}
