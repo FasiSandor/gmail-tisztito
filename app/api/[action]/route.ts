@@ -21,7 +21,7 @@ export async function GET(req:Request,{params}:C){const {action}=await params;
 export async function POST(req:Request,{params}:C){const {action}=await params;if(!sameOrigin(req))return json({error:'Tiltott kérés'},403);
  try{const body=await req.json();const email=String(body.email||'');
  if(action==='disconnect'){await save((await session()).filter(a=>a.email!==email));return json({ok:true})}
- if(action==='search'){let q=String(body.query||'').trim();if(!q||q.length>180)return json({error:'Érvénytelen keresés'},400);if(/^[^\\s@:]+@[^\\s@:]+\\.[^\\s@:]+$/.test(q))q='from:'+q;
+ if(action==='search'){let q=String(body.query||'').trim();if(!q||q.length>180)return json({error:'Érvénytelen keresés'},400);if(/^[^\s@:]+@[^\s@:]+\.[^\s@:]+$/.test(q))q='from:'+q;
  const cursor=typeof body.cursor==='string'&&body.cursor.length<3000?body.cursor:undefined;
  const a=await active(email);const p=new URLSearchParams({q,maxResults:'100'});if(cursor)p.set('pageToken',cursor);
  const data=await api(a,'/messages?'+p);
