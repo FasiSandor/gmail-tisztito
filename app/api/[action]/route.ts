@@ -21,10 +21,14 @@ export async function GET(req:Request,{params}:C){const {action}=await params;
 export async function POST(req:Request,{params}:C){const {action}=await params;if(!sameOrigin(req))return json({error:'Tiltott kérés'},403);
  try{const body=await req.json();const email=String(body.email||'');
  if(action==='disconnect'){await save((await session()).filter(a=>a.email!==email));return json({ok:true})}
- if(action==='search'){let q=String(body.query||'').trim();if(!q||q.length>180)return json({error:'Érvénytelen keresés'},400);if(/^[^\s@:]+@[^\s@:]+\.[^\s@:]+$/.test(q))q='from:'+q;const a=await active(email),ids:string[]=[];let page:string|undefined;do{const p=new URLSearchParams({q,maxResults:'500'});if(page)p.set('pageToken',page);const data=await api(a,'/messages?'+p);ids.push(...(data.messages||[]).slice(0,2000-ids.length).map((x:{id:string})=>x.id));page=data.nextPageToken}while(page&&ids.length<2000);
+ if(action==='search'){let q=String(body.query||'').trim();if(!q||q.length>180)return json({error:'Érvénytelen keresés'},400);if(/^[^\\s@:]+@[^\\s@:]+\\.[^\\s@:]+$/.test(q))q='from:'+q;
+ const cursor=typeof body.cursor==='string'&&body.cursor.length<3000?body.cursor:undefined;
+ const a=await active(email);const p=new URLSearchParams({q,maxResults:'100'});if(cursor)p.set('pageToken',cursor);
+ const data=await api(a,'/messages?'+p);
+ const ids:string[]=(data.messages||[]).map((x:{id:string})=>x.id);
  let bytes=0,protectedCount=0,failed=0;const eligible:string[]=[];
- for(let i=0;i<ids.length;i+=20){await Promise.all(ids.slice(i,i+20).map(async id=>{try{const m=await api(a,'/messages/'+id+'?format=metadata&fields=id,sizeEstimate,labelIds');bytes+=Number(m.sizeEstimate||0);if((m.labelIds||[]).some((l:string)=>l==='IMPORTANT'||l==='STARRED'))protectedCount++;else eligible.push(id)}catch{failed++}}))}
- return json({ids:eligible,count:ids.length,bytes,protectedCount,failed,truncated:!!page,query:q})}
+ for(let i=0;i<ids.length;i+=10){await Promise.all(ids.slice(i,i+10).map(async id=>{try{const m=await api(a,'/messages/'+id+'?format=metadata&fields=id,sizeEstimate,labelIds');bytes+=Number(m.sizeEstimate||0);if((m.labelIds||[]).some((l:string)=>l==='IMPORTANT'||l==='STARRED'))protectedCount++;else eligible.push(id)}catch{failed++}}))}
+ return json({ids:eligible,count:ids.length,bytes,protectedCount,failed,cursor:data.nextPageToken||null,estimate:Number(data.resultSizeEstimate||0),query:q})}
  if(action==='trash'){const ids=body.ids;if(body.confirm!=='KUKA'||!Array.isArray(ids)||ids.length<1||ids.length>2000||ids.some((id:unknown)=>typeof id!=='string'||!/^[a-zA-Z0-9]+$/.test(id)))return json({error:'Érvénytelen megerősítés'},400);const a=await active(email);let moved=0,failed=0;for(let i=0;i<ids.length;i+=10){await Promise.all(ids.slice(i,i+10).map(async(id:string)=>{try{const m=await api(a,'/messages/'+id+'?format=minimal&fields=labelIds');if((m.labelIds||[]).some((l:string)=>['STARRED','IMPORTANT','TRASH'].includes(l)))return;await api(a,'/messages/'+id+'/trash','POST');moved++}catch{failed++}}))}return json({moved,failed})}
  return json({error:'Ismeretlen művelet'},404)
  }catch(e){return json({error:e instanceof Error?e.message:'Ismeretlen hiba'},400)}
