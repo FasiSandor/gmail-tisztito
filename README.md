@@ -5,7 +5,7 @@ Több Gmail-fiókot támogató, mobil-first alkalmazás a levelek kereséséhez,
 ## Funkciók
 - Legfeljebb négy Google-fiók egy munkamenetben
 - Feladó, Gmail keresőoperátor, nagy és régi levelek
-- Legfeljebb 2000 levél egy keresési menetben; becsült összméret
+- Lapozható, 100 leveles vizsgálat összesített darabszámmal, becsült mérettel és feladói rangsorral
 - Csillagozott és fontos levelek védelme, újraellenőrzése a művelet előtt
 - Explicit megerősítés és Kukába mozgatás (nem végleges törlés)
 - HttpOnly titkosított munkamenet; nincs szükség adatbázisra
@@ -34,7 +34,7 @@ npm run build
 ## Fontos korlátok
 - A Gmail API által közölt \`sizeEstimate\` **becslés**, nem garantált Google Drive / Google One tárhelynyereség.
 - Kukába helyezés után a tárhely csak a Kuka ürítésekor (esetleg késleltetéssel) szabadul fel.
-- A keresés maximum 2000 üzenetet vizsgál, a megjelenített darabszám és méret erre a csoportra vonatkozik.
+- Nincs 2000-es összesített korlát. A felület 100 leveles lapokat kér le, a feldolgozás ideje és a Gmail API-kvóta nagy postafiókoknál jelentős lehet. A vizsgálati állapot az aktuális böngészőmunkamenetben tárolódik, és ennek tárhelykorlátja van.
 - Nagy mennyiség feldolgozásakor serverless időkorlát léphet fel; ilyenkor kisebb keresési részhalmazokat használj.
 - A Google OAuth Testing állapotú refresh tokenek lejárhatnak, ilyenkor újra kell csatlakoztatni a fiókot.
 - A session tokenjei a **titkosított cookie-ban** tárolódnak, Gmail tartalom és melléklet nincs adatbázisba mentve.
